@@ -1,0 +1,10 @@
+#header {
+	position: absolute;
+	width: 320px;
+	height: 90px;
+	left: 10px;
+	top: -10px;
+	margin: 0;
+    padding: 0;
+    background-image: linear-gradient(#155799, #159957)
+}	
