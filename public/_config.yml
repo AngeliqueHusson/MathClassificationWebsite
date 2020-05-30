@@ -1,0 +1,14 @@
+theme: jekyll-theme-cayman
+
+# Setup
+title: Classification of Mathematical Videos
+description: Epsilon Stream Project, by Angelique Husson
+
+# About / contact
+author: 
+    name: Angelique Husson
+    email: hussonangelique@gmail.com
+
+exclude:
+    - node_modules
+    - internship
