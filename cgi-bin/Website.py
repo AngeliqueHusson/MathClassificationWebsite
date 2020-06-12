@@ -7,10 +7,18 @@ from nltk.corpus import stopwords, words
 from nltk.corpus import words
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
+
 cgitb.enable()
+import keras
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import load_model
+import pandas as pd
+from numpy import array
+
 
 class Classification:
-    def website(file, title):
+    def website(method, file, title):
         # category_id_df = pd.read_csv("category_id_df.csv")
         # id_to_category = dict(category_id_df[['y_id', 'newHashtag']].values)  # Dictionary connecting id to hashtag
         id_to_category = {0: 'Exploding Dots', 1: 'Statistics and probability', 2: 'Geometry', 3: 'Numbers',
@@ -73,40 +81,126 @@ class Classification:
             clean_sentence.append(title)  # Adding the titles to the captions
 
         ## Stemming
-        text = []
+        text1 = []
         for w in clean_sentence:
             x = ps.stem(w)  # Stemming method
-            text.append(x)
+            text1.append(x)
 
-        text = ' '.join(text)
+        text = ' '.join(text1)
         text = str(text)
+        global proba
+        global label2
+        global proba2
 
-        loaded_model = pickle.load(open('C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/finalized_model.sav', 'rb'))
-        vectorizer1 = pickle.load(open('C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/vectorizer1.sav', 'rb'))
-        result = loaded_model.predict(vectorizer1.transform([text]))
-        result = id_to_category[result[0]]
+        if method == "Support Vector Machine":
+            loaded_model = pickle.load(open(
+                'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/finalized_model_SVM.sav',
+                'rb'))
+            vectorizer1 = pickle.load(open(
+                'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/vectorizer1.sav',
+                'rb'))
+            result = loaded_model.predict(vectorizer1.transform([text]))
+            result = id_to_category[result[0]]
+        elif method == "Recurrent Neural Network":
+            # Load model
+            loaded_model = load_model(
+                'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/finalized_model_RNN.h5')
+
+            # Load tokenizer
+            tokenizer = Tokenizer()
+            with open(
+                    'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/tokenizerRNN.pickle',
+                    'rb') as handle:
+                tokenizer = pickle.load(handle)
+
+            # text_labels = encoder.classes_
+            text = [str(text1)]
+
+            # tokenizer.fit_on_texts(text)
+            X_test = tokenizer.texts_to_sequences(text)
+            text = pad_sequences(X_test, maxlen=500)
+
+            result = loaded_model.predict_classes(text)
+            result = id_to_category[result[0]]
+
+            proba1 = max(loaded_model.predict_proba(text))
+            proba = round(max(proba1)*100)
+            proba1 = list(proba1)
+            # print(proba1)
+            proba2 = sorted(proba1)[9]  # The second highest value
+            label2 = proba1.index(proba2)  # Index of the second highest value
+            label2 = id_to_category[label2]  # Corresponding category belonging to this second highest value
+            proba2 = round(proba2*100)
+        else:
+            loaded_model = pickle.load(open(
+                'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/finalized_model_LR.sav',
+                'rb'))
+            vectorizer1 = pickle.load(open(
+                'C:/Users/s157165\Documents/Jaar 5 2019-2020 Master/Internship Australia/MathClassification/cgi-bin/vectorizer1.sav',
+                'rb'))
+            result = loaded_model.predict(vectorizer1.transform([text]))
+            result = id_to_category[result[0]]
+
+            proba1 = max(loaded_model.predict_proba(vectorizer1.transform([text])))
+            proba = round(max(proba1)*100)
+            proba1 = list(proba1)
+            # print(proba1)
+            proba2 = sorted(proba1)[9]  # The second highest value
+            label2 = proba1.index(proba2)  # Index of the second highest value
+            label2 = id_to_category[label2]  # Corresponding category belonging to this second highest value
+            proba2 = round(proba2*100)
 
         return result
 
 
+# Get data from fields
 form = cgi.FieldStorage()
-textVideo = form.getvalue("textVideo")
-titleVideo = form.getvalue("titleVideo")
+complete = True
 
-web = Classification.website("Hello, I love loving exploding dots numbers and also I participate in exercising when I am busy calculating",
-                             "This is a numbers video")
+if "textVideo" in form:
+    textVideo = form.getvalue("textVideo")
+else:
+    complete = False
 
-webs = Classification.website(textVideo,titleVideo)
+if "titleVideo" in form:
+    titleVideo = form.getvalue("titleVideo")
+else:
+    complete = False
 
-print("Content-Type: text/html\r\n\r\n")
-print("<html>")
-print("<head><title>My first CGI program</title></head>")
-print("<body>")
-print("<h1>Classification results</h1>")
-print("<p>The title of the video:</p>")
-print(titleVideo)
-print("<p>The text of the video:</p>")
-print(textVideo)
-print("<h2>The video called \" %s \" is classified as: %s</h2>" % (titleVideo, webs))
-print("</body>")
-print("</html>")
+if "dropdown" in form:
+    subject = form.getvalue('dropdown')
+else:
+    complete = False
+
+# textVideo = form["textVideo"]
+# titleVideo = form["titleVideo"]
+# subject = form["dropdown"]
+
+# web =  Classification.website("..","Hello, I love loving exploding dots numbers and also I participate in exercising when I am busy calculating","This is a numbers video")
+if complete == False:
+    print("Content-type: text/html\n\n")
+    print("<p id='red'> Please enter all fields and try again</p>")
+else:
+    webs = Classification.website(subject, textVideo, titleVideo)
+
+    print("Content-type: text/html\n\n")
+
+    # print("Content-Type: text/html\r\n\r\n")
+    # print("<html>")
+    # print("<head><title>CGI program</title></head>")
+    # print("<body>")
+    print("<h1>Classification results</h1>")
+    # print("<p>The title of the video:</p>")
+    # print(titleVideo)
+    # print("<p>The text of the video:</p>")
+    # print(textVideo)
+    print(
+        "<p>The video called \" %s \" is classified as: \" <a id=\"bold\" > %s  </a> \" using classification algorithm  %s.</p>" % (
+        titleVideo, webs, subject))
+    if subject != "Support Vector Machine":
+        p = "%"
+        print("<p> The %s algorithm is %s %s sure that this is the correct label.</p> " % (subject, proba, p))
+        print("<p></p>")
+        print("<p> If you do not agree with this result, it might be interesting to take a look at the second highest ranked label. The second highest ranked label is category \"%s\", the %s algorithm is %s %s sure that this is the correct label. </p>" % (label2, subject, proba2, p))
+    # print("</body>")
+    # print("</html>")
